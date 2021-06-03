@@ -200,9 +200,9 @@ def DrawArm(arm, ax, jrad = .1, jdia = .3, lens = 1, c = 'grey', forces = np.zer
     ax.plot3D(p[0,:], p[1,:], p[2,:])
     Dims = np.copy(arm._Dims).T
     dofs = arm.S.shape[1]
-    yrot = fsr.TAAtoTM(np.array([0,0,0,0,np.pi/2,0]))
-    xrot = fsr.TAAtoTM(np.array([0,0,0,np.pi/2,0,0]))
-    zrot = fsr.TAAtoTM(np.array([0,0,0,0,0,np.pi]))
+    yrot = poses[0].spawnNew([0,0,0,0,np.pi/2,0])
+    xrot = poses[0].spawnNew([0,0,0,np.pi/2,0,0])
+    zrot = poses[0].spawnNew([0,0,0,0,0,np.pi])
     for i in range(startind, dofs):
         zed = poses[i]
         DrawAxes(zed, lens, ax)
@@ -319,20 +319,20 @@ def DrawCamera(cam, size, ax):
     ax.plot3D(np.hstack((Scr[0:4,0], Scr[0,0])), np.hstack((Scr[0:4,1], Scr[0,1])), np.hstack((Scr[0:4,2], Scr[0,2])), 'red')
 
 def DrawAxes(zed, len, ax, makelegend = None, zdir = None):
-    xbar = fsr.TAAtoTM(np.array([len, 0, 0, 0, 0, 0]))
-    ybar = fsr.TAAtoTM(np.array([0, len, 0, 0, 0, 0]))
-    zbar = fsr.TAAtoTM(np.array([0, 0, len, 0, 0, 0]))
-    zx = (zed @ xbar).gTAA()
-    zy = (zed @ ybar).gTAA()
-    zz = (zed @ zbar).gTAA()
-    poses = zed.gTAA()
+    xbar = zed.spawnNew([len, 0, 0, 0, 0, 0])
+    ybar = zed.spawnNew([0, len, 0, 0, 0, 0])
+    zbar = zed.spawnNew([0, 0, len, 0, 0, 0])
+    zx = (zed @ xbar).gTAA().flatten()
+    zy = (zed @ ybar).gTAA().flatten()
+    zz = (zed @ zbar).gTAA().flatten()
+    poses = zed.gTAA().flatten()
     if makelegend is not None:
         if zdir is not None:
             zed = zed @ zdir
         ax.text(zed[0],zed[1],zed[2], makelegend)
-    ax.plot3D([poses[0,0], zx[0]], [poses[1,0], zx[1]], [poses[2,0], zx[2]], 'red')
-    ax.plot3D([poses[0,0], zy[0]], [poses[1,0], zy[1]], [poses[2,0], zy[2]], 'blue')
-    ax.plot3D([poses[0,0], zz[0]], [poses[1,0], zz[1]], [poses[2,0], zz[2]], 'green')
+    ax.plot3D([poses[0], zx[0]], [poses[1], zx[1]], [poses[2], zx[2]], 'red')
+    ax.plot3D([poses[0], zy[0]], [poses[1], zy[1]], [poses[2], zy[2]], 'blue')
+    ax.plot3D([poses[0], zz[0]], [poses[1], zz[1]], [poses[2], zz[2]], 'green')
 
 def DrawTrussElement(T, L, R, ax, c='blue', c2 = 'blue', hf = False, delt = .5, RB = .1):
     if hf == True:
@@ -393,7 +393,7 @@ def DrawRectangle(T, dims, ax, c='grey', a = 0.1):
     corners = .5 * np.array([[-dx,-dy,-dz],[dx, -dy, -dz],[-dx, dy, -dz],[dx, dy, -dz],[-dx, -dy, dz],[dx, -dy, dz],[-dx, dy, dz],[dx, dy, dz]]).T
     Tc = np.zeros((3,8))
     for i in range(0,8):
-        h = T.gTM() @ np.array([[corners[0,i]],[corners[1,i]],[corners[2,i]],[1]])
+        h = T.gTM() @ np.array([corners[0,i],corners[1,i],corners[2,i],1]).T
         Tc[0:3,i] = np.squeeze(h[0:3])
     #segs = np.array([[1, 2],[1, 3],[2, 4],[3, 4],[1, 5],[2, 6],[3, 7],[4, 8],[5, 6],[5, 7],[6, 8],[7,8]])-1
     #disp(Tc[0,(0,1,4,5)])
@@ -570,11 +570,11 @@ def DrawTube(T, height, r, ax, c = 'blue', res = 12):
     tres2 = np.zeros((6,len(x)))
     for i in range(len(x)):
         #disp(i)
-        tres[0:6,i] = fsr.TMtoTAA(T.gTM() @ fsr.TAAtoTM(np.array([x[i], y[i], z[i], 0, 0, 0]))).reshape((6))
-        tres2[0:6,i] = fsr.TMtoTAA(T.gTM() @ fsr.TAAtoTM(np.array([x[i], y[i], -z[i], 0, 0, 0]))).reshape((6))
-        bx = np.array([tres[0,i], tres2[0,i]])
-        by = np.array([tres[1,i], tres2[1,i]])
-        bz = np.array([tres[2,i], tres2[2,i]])
+        tres[0:6,i] = (T @ T.spawnNew([x[i], y[i], z[i], 0, 0, 0])).TAA.flatten()
+        tres2[0:6,i] = (T @ T.spawnNew([x[i], y[i], -z[i], 0, 0, 0])).TAA.flatten()
+        bx = np.array([tres[0,i], tres2[0,i]], dtype=object)
+        by = np.array([tres[1,i], tres2[1,i]], dtype=object)
+        bz = np.array([tres[2,i], tres2[2,i]], dtype=object)
         ax.plot3D(bx, by, bz, c)
     ax.plot3D(tres[0,:], tres[1,:],tres[2,:], c)
     ax.plot3D(tres2[0,:], tres2[1,:],tres2[2,:], c)
