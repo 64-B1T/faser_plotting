@@ -318,11 +318,8 @@ def DrawCamera(cam, size, ax):
         ax.plot3D((cam.CamT[0],Scr[i, 0]), (cam.CamT[1],Scr[i, 1]),(cam.CamT[2],Scr[i, 2]), 'green')
     ax.plot3D(np.hstack((Scr[0:4,0], Scr[0,0])), np.hstack((Scr[0:4,1], Scr[0,1])), np.hstack((Scr[0:4,2], Scr[0,2])), 'red')
 
-def DrawAxes(zed, len, ax, makelegend = None, zdir = None):
-    xbar, ybar, zbar = zed.TripleUnit()
-    zx = (zed @ xbar).gTAA().flatten()
-    zy = (zed @ ybar).gTAA().flatten()
-    zz = (zed @ zbar).gTAA().flatten()
+def DrawAxes(zed, lv, ax, makelegend = None, zdir = None):
+    zx, zy, zz = zed.TripleUnit(lv)
     poses = zed.gTAA().flatten()
     if makelegend is not None:
         if zdir is not None:
