@@ -186,7 +186,7 @@ def QuadPlot(p1, p2, dim, ax, c = 'b'):
 def DrawArm(arm, ax, jrad = .1, jdia = .3, lens = 1, c = 'grey', forces = np.zeros((1))):
     startind = 0
 
-    while (sum(arm.S[3:6,startind]) == 1):
+    while (sum(arm.screw_list[3:6,startind]) == 1):
         startind = startind + 1
     poses = arm.getJointTransforms()
     p = np.zeros((3,len(poses[startind:])))
@@ -198,8 +198,8 @@ def DrawArm(arm, ax, jrad = .1, jdia = .3, lens = 1, c = 'grey', forces = np.zer
         p[2,i] = (poses[i].TAA[2])
     ax.scatter3D(p[0,:], p[1,:], p[2,:])
     ax.plot3D(p[0,:], p[1,:], p[2,:])
-    Dims = np.copy(arm._Dims).T
-    dofs = arm.S.shape[1]
+    Dims = np.copy(arm.link_dimensions).T
+    dofs = arm.screw_list.shape[1]
     yrot = poses[0].spawnNew([0,0,0,0,np.pi/2,0])
     xrot = poses[0].spawnNew([0,0,0,np.pi/2,0,0])
     zrot = poses[0].spawnNew([0,0,0,0,0,np.pi])
@@ -217,12 +217,12 @@ def DrawArm(arm, ax, jrad = .1, jdia = .3, lens = 1, c = 'grey', forces = np.zer
             if len(forces) != 1:
                 label = '%.1fNm' % (forces[i])
                 ax.text(poses[i][0], poses[i][1], poses[i][2], label)
-            if (arm._jaxes[0,i] == 1):
+            if (arm.joint_axes[0,i] == 1):
                 if len(forces) != 1:
                     DrawTube(zed @ yrot, jrad, forces[i]/300, ax)
                 else:
                     DrawTube(zed @ yrot, jrad, jdia, ax)
-            elif (arm._jaxes[1,i] == 1):
+            elif (arm.joint_axes[1,i] == 1):
                 if len(forces) != 1:
                     DrawTube(zed @ xrot, jrad, forces[i]/300, ax)
                 else:
@@ -236,7 +236,9 @@ def DrawArm(arm, ax, jrad = .1, jdia = .3, lens = 1, c = 'grey', forces = np.zer
             pass
     zed = poses[0].gTAA()
     if startind ==0:
-        DrawRectangle(arm.baseT @ fsr.TAAtoTM(np.array([0, 0, Dims[len(Dims)-1,2]/2, 0, 0, 0])), Dims[len(Dims)-1,0:3], ax, c = c)
+        DrawRectangle(arm.base_pos_global @
+            fsr.TAAtoTM(np.array([0, 0, Dims[len(Dims)-1,2]/2, 0, 0, 0])),
+            Dims[len(Dims)-1,0:3], ax, c = c)
     for i in range(len(arm.cameras)):
         DrawCamera(arm.cameras[i][0], 1, ax)
 
@@ -253,27 +255,65 @@ def DrawMobilePlatform(pl, ax, col = 'blue'):
 def DrawSP(sp, ax, col = 'green', forces = 1):
     for i in range(6):
 
-        ax.plot3D([sp._bJS[0,i], sp._bJS[0,(i+1)%6]],[sp._bJS[1,i], sp._bJS[1,(i+1)%6]], [sp._bJS[2,i],sp._bJS[2,(i+1)%6]], 'blue')
-        ax.plot3D([sp._tJS[0,i], sp._tJS[0,(i+1)%6]],[sp._tJS[1,i], sp._tJS[1,(i+1)%6]], [sp._tJS[2,i],sp._tJS[2,(i+1)%6]], 'blue')
+        ax.plot3D([sp.getBottomJoints()[0,i], sp.getBottomJoints()[0,(i+1)%6]],
+            [sp.getBottomJoints()[1,i], sp.getBottomJoints()[1,(i+1)%6]],
+            [sp.getBottomJoints()[2,i],sp.getBottomJoints()[2,(i+1)%6]], 'blue')
+        ax.plot3D([sp.getTopJoints()[0,i], sp.getTopJoints()[0,(i+1)%6]],
+            [sp.getTopJoints()[1,i], sp.getTopJoints()[1,(i+1)%6]],
+            [sp.getTopJoints()[2,i],sp.getTopJoints()[2,(i+1)%6]], 'blue')
         if i == 0:
-            ax.plot3D([sp._bJS[0,i], sp._tJS[0,i]],[sp._bJS[1,i], sp._tJS[1,i]], [sp._bJS[2,i], sp._tJS[2,i]], 'darkred')
+            ax.plot3D([sp.getBottomJoints()[0,i], sp.getTopJoints()[0,i]],
+                [sp.getBottomJoints()[1,i], sp.getTopJoints()[1,i]],
+                [sp.getBottomJoints()[2,i], sp.getTopJoints()[2,i]], 'darkred')
         elif i == 1:
-            ax.plot3D([sp._bJS[0,i], sp._tJS[0,i]],[sp._bJS[1,i], sp._tJS[1,i]], [sp._bJS[2,i], sp._tJS[2,i]], 'salmon')
+            ax.plot3D([sp.getBottomJoints()[0,i], sp.getTopJoints()[0,i]],
+                [sp.getBottomJoints()[1,i], sp.getTopJoints()[1,i]],
+                [sp.getBottomJoints()[2,i], sp.getTopJoints()[2,i]], 'salmon')
         else:
-            ax.plot3D([sp._bJS[0,i], sp._tJS[0,i]],[sp._bJS[1,i], sp._tJS[1,i]], [sp._bJS[2,i], sp._tJS[2,i]], col)
-        if(sp.plateThickness != 0):
-            aa = sp.plateTransform.spawnNew([sp._bJS[0,i], sp._bJS[1,i], sp._bJS[2,i], sp.gbottomT()[3], sp.gbottomT()[4], sp.gbottomT()[5]]) @ (-1 * sp.plateTransform)
-            ab = sp.plateTransform.spawnNew([sp._bJS[0,(i+1)%6], sp._bJS[1,(i+1)%6], sp._bJS[2,(i+1)%6], sp.gbottomT()[3], sp.gbottomT()[4], sp.gbottomT()[5]]) @ (-1 * sp.plateTransform)
-            ba = sp.plateTransform.spawnNew([sp._tJS[0,i], sp._tJS[1,i], sp._tJS[2,i], sp.gtopT()[3], sp.gtopT()[4], sp.gtopT()[5]]) @ (sp.plateTransform)
-            bb = sp.plateTransform.spawnNew([sp._tJS[0,(i+1)%6], sp._tJS[1,(i+1)%6], sp._tJS[2,(i+1)%6], sp.gtopT()[3], sp.gtopT()[4], sp.gtopT()[5]]) @ (sp.plateTransform)
+            ax.plot3D([sp.getBottomJoints()[0,i], sp.getTopJoints()[0,i]],
+                [sp.getBottomJoints()[1,i], sp.getTopJoints()[1,i]],
+                [sp.getBottomJoints()[2,i], sp.getTopJoints()[2,i]], col)
+        if(sp.bottom_plate_thickness != 0):
+            aa = sp.nominal_plate_transform.spawnNew([
+                sp.getBottomJoints()[0,i],
+                sp.getBottomJoints()[1,i],
+                sp.getBottomJoints()[2,i],
+                sp.getBottomT()[3],
+                sp.getBottomT()[4],
+                sp.getBottomT()[5]]) @ (-1 * sp.nominal_plate_transform)
+            ab = sp.nominal_plate_transform.spawnNew([
+                sp.getBottomJoints()[0,(i+1)%6],
+                sp.getBottomJoints()[1,(i+1)%6],
+                sp.getBottomJoints()[2,(i+1)%6],
+                sp.getBottomT()[3],
+                sp.getBottomT()[4],
+                sp.getBottomT()[5]]) @ (-1 * sp.nominal_plate_transform)
+            ba = sp.nominal_plate_transform.spawnNew([
+                sp.getTopJoints()[0,i],
+                sp.getTopJoints()[1,i],
+                sp.getTopJoints()[2,i],
+                sp.getTopT()[3],
+                sp.getTopT()[4],
+                sp.getTopT()[5]]) @ (sp.nominal_plate_transform)
+            bb = sp.nominal_plate_transform.spawnNew([
+                sp.getTopJoints()[0,(i+1)%6],
+                sp.getTopJoints()[1,(i+1)%6],
+                sp.getTopJoints()[2,(i+1)%6],
+                sp.getTopT()[3],
+                sp.getTopT()[4],
+                sp.getTopT()[5]]) @ (sp.nominal_plate_transform)
             ax.plot3D([aa[0], ab[0]],[aa[1], ab[1]],[aa[2], ab[2]], 'blue')
             ax.plot3D([ba[0], bb[0]],[ba[1], bb[1]],[ba[2], bb[2]], 'blue')
-            ax.plot3D([sp._bJS[0,i], aa[0]],[sp._bJS[1,i], aa[1]],[sp._bJS[2,i], aa[2]], 'blue')
-            ax.plot3D([sp._tJS[0,i], ba[0]],[sp._tJS[1,i], ba[1]],[sp._tJS[2,i], ba[2]], 'blue')
+            ax.plot3D([sp.getBottomJoints()[0,i], aa[0]],
+                [sp.getBottomJoints()[1,i], aa[1]],
+                [sp.getBottomJoints()[2,i], aa[2]], 'blue')
+            ax.plot3D([sp.getTopJoints()[0,i], ba[0]],
+                [sp.getTopJoints()[1,i], ba[1]],
+                [sp.getTopJoints()[2,i], ba[2]], 'blue')
 
-    if forces == 1 and sp.legForces.size > 1:
+    if forces == 1 and sp.getLegForces().size > 1:
         for i in range(6):
-            label = '%.1fN' % (sp.legForces[i])
+            label = '%.1fN' % (sp.getLegForces()[i])
             if i % 2 == 0:
                 pos = sp.getActuatorLoc(i, 'b')
             else:
@@ -283,16 +323,44 @@ def DrawSP(sp, ax, col = 'green', forces = 1):
 def DrawInterPlate(sp1, sp2, ax, col):
 
         for i in range(6):
-            aa = sp1.plateTransform.spawnNew([sp1._tJS[0,i], sp1._tJS[1,i], sp1._tJS[2,i], sp1.gtopT()[3], sp1.gtopT()[4], sp1.gtopT()[5]]) @ (sp1.plateTransform)
-            ab = sp1.plateTransform.spawnNew([sp1._tJS[0,(i+1)%6], sp1._tJS[1,(i+1)%6], sp1._tJS[2,(i+1)%6], sp1.gtopT()[3], sp1.gtopT()[4], sp1.gtopT()[5]]) @ (sp1.plateTransform)
-            ba = sp2.plateTransform.spawnNew([sp2._bJS[0,i], sp2._bJS[1,i], sp2._bJS[2,i], sp2.gbottomT()[3], sp2.gbottomT()[4], sp2.gbottomT()[5]]) @ (-1 * sp2.plateTransform)
-            bb = sp2.plateTransform.spawnNew([sp2._bJS[0,(i+1)%6], sp2._bJS[1,(i+1)%6], sp2._bJS[2,(i+1)%6], sp2.gbottomT()[3], sp2.gbottomT()[4], sp2.gbottomT()[5]]) @ (-1 * sp2.plateTransform)
+            aa = sp1.nominal_plate_transform.spawnNew([
+                sp1.getTopJoints()[0,i],
+                sp1.getTopJoints()[1,i],
+                sp1.getTopJoints()[2,i],
+                sp1.getTopT()[3],
+                sp1.getTopT()[4],
+                sp1.getTopT()[5]]) @ (sp1.nominal_plate_transform)
+            ab = sp1.nominal_plate_transform.spawnNew([
+                sp1.getTopJoints()[0,(i+1)%6],
+                sp1.getTopJoints()[1,(i+1)%6],
+                sp1.getTopJoints()[2,(i+1)%6],
+                sp1.getTopT()[3],
+                sp1.getTopT()[4],
+                sp1.getTopT()[5]]) @ (sp1.nominal_plate_transform)
+            ba = sp2.nominal_plate_transform.spawnNew([
+                sp2.getBottomJoints()[0,i],
+                sp2.getBottomJoints()[1,i],
+                sp2.getBottomJoints()[2,i],
+                sp2.getBottomT()[3],
+                sp2.getBottomT()[4],
+                sp2.getBottomT()[5]]) @ (-1 * sp2.nominal_plate_transform)
+            bb = sp2.nominal_plate_transform.spawnNew([
+                sp2.getBottomJoints()[0,(i+1)%6],
+                sp2.getBottomJoints()[1,(i+1)%6],
+                sp2.getBottomJoints()[2,(i+1)%6],
+                sp2.getBottomT()[3],
+                sp2.getBottomT()[4],
+                sp2.getBottomT()[5]]) @ (-1 * sp2.nominal_plate_transform)
             #ax.plot3D([aa[0], ab[0]],[aa[1], ab[1]],[aa[2], ab[2]], 'g')
             #ax.plot3D([ba[0], bb[0]],[ba[1], bb[1]],[ba[2], bb[2]], 'g')
-            ax.plot3D([sp2._bJS[0,i], aa[0]],[sp2._bJS[1,i], aa[1]],[sp2._bJS[2,i], aa[2]], 'g')
-            ax.plot3D([sp1._tJS[0,i], ba[0]],[sp1._tJS[1,i], ba[1]],[sp1._tJS[2,i], ba[2]], 'g')
-            #ax.plot3D([sp2._bJS[0,i], ab[0]],[sp2._bJS[1,i], ab[1]],[sp2._bJS[2,i], ab[2]], 'g')
-            #ax.plot3D([sp1._tJS[0,i], bb[0]],[sp1._tJS[1,i], bb[1]],[sp1._tJS[2,i], bb[2]], 'g')
+            ax.plot3D(
+                [sp2.getBottomJoints()[0,i], aa[0]],
+                [sp2.getBottomJoints()[1,i], aa[1]],
+                [sp2.getBottomJoints()[2,i], aa[2]], 'g')
+            ax.plot3D(
+                [sp1.getTopJoints()[0,i], ba[0]],
+                [sp1.getTopJoints()[1,i], ba[1]],
+                [sp1.getTopJoints()[2,i], ba[2]], 'g')
 
 def DrawAssembler(spl, ax, col = 'green', forces = 1):
     for i in range(spl.numsp):
@@ -315,8 +383,12 @@ def DrawCamera(cam, size, ax):
     t = ScreenLoc @ fsr.TAAtoTM(np.array([imgT[0], -imgT[1], 0, 0, 0, 0]))
     Scr[2,0:3] = t[0:3].flatten()
     for i in range(4):
-        ax.plot3D((cam.CamT[0],Scr[i, 0]), (cam.CamT[1],Scr[i, 1]),(cam.CamT[2],Scr[i, 2]), 'green')
-    ax.plot3D(np.hstack((Scr[0:4,0], Scr[0,0])), np.hstack((Scr[0:4,1], Scr[0,1])), np.hstack((Scr[0:4,2], Scr[0,2])), 'red')
+        ax.plot3D((cam.CamT[0],Scr[i, 0]),
+            (cam.CamT[1],Scr[i, 1]),
+            (cam.CamT[2],Scr[i, 2]), 'green')
+    ax.plot3D(np.hstack((Scr[0:4,0], Scr[0,0])),
+        np.hstack((Scr[0:4,1], Scr[0,1])),
+        np.hstack((Scr[0:4,2], Scr[0,2])), 'red')
 
 def DrawAxes(zed, lv, ax, makelegend = None, zdir = None):
     zx, zy, zz = zed.TripleUnit(lv)
@@ -384,8 +456,15 @@ def DrawRectangle(T, dims, ax, c='grey', a = 0.1):
     dx = dims[0]
     dy = dims[1]
     dz = dims[2]
-    #                         BBL            BBR             BFL           BFR            TBL            TBR            TFL           TFR
-    corners = .5 * np.array([[-dx,-dy,-dz],[dx, -dy, -dz],[-dx, dy, -dz],[dx, dy, -dz],[-dx, -dy, dz],[dx, -dy, dz],[-dx, dy, dz],[dx, dy, dz]]).T
+    corners = .5 * np.array([
+        [-dx,-dy,-dz], #BBL
+        [dx, -dy, -dz], #BBR
+        [-dx, dy, -dz], #BFL
+        [dx, dy, -dz], #BFR
+        [-dx, -dy, dz], #TBL
+        [dx, -dy, dz], #TBR
+        [-dx, dy, dz], #TFL
+        [dx, dy, dz]]).T #TFR
     Tc = np.zeros((3,8))
     for i in range(0,8):
         h = T.gTM() @ np.array([corners[0,i],corners[1,i],corners[2,i],1]).T
