@@ -18,8 +18,6 @@ from descartes import PolygonPatch
 import alphashape
 # Get colormaps to use with lighting object.
 from matplotlib import cm
-from scipy.special import jn
-
 import random
 
 import os
@@ -68,7 +66,8 @@ def alpha_shape_3D(pos, alpha):
 
     Vertices = np.unique(Edges)
     return Vertices,Edges,Triangles
-def DrawManipulability(J, tm, lenfactor):
+
+def DrawManipulability(J, tm, lenfactor, ax):
     """Short summary.
 
     Args:
@@ -88,7 +87,7 @@ def DrawManipulability(J, tm, lenfactor):
 
     weigv, weigd = ling.eig(Aw)
     weig = math.sqrt(np.diag(weigd))
-    [veigv, veigd] = eig(Av)
+    [veigv, veigd] = ling.eig(Av)
     veig = math.sqrt(np.diag(veigd))
 
     weigvs = weigv.copy()
@@ -102,8 +101,8 @@ def DrawManipulability(J, tm, lenfactor):
         pw = p + lenfactor * weigvs[0:3, i] * weig[i]
         pv = p + lenfactor * veigvs[0:3, i] * veig[i]
 
-        plot3D(p, pw)
-        plot3D(p, pv)
+        ax.plot3D(p, pw)
+        ax.plot3D(p, pv)
 
 def drawROM(arm, ares,  ax):
     """Short summary.
@@ -184,9 +183,9 @@ def getSTLProps(fname):
 
     """
     #Return center of Mass, inertia, etc
-    mesh = mesh.Mesh.from_file(fname)
+    new_mesh = mesh.Mesh.from_file(fname)
 
-    return mesh.get_mass_properties()
+    return new_mesh.get_mass_properties()
 
 def QuadPlot(p1, p2, dim, ax, c = 'b'):
     """Short summary.
@@ -435,45 +434,45 @@ def DrawInterPlate(sp1, sp2, ax, col):
 
     """
 
-        for i in range(6):
-            aa = sp1.nominal_plate_transform.spawnNew([
-                sp1.getTopJoints()[0, i],
-                sp1.getTopJoints()[1, i],
-                sp1.getTopJoints()[2, i],
-                sp1.getTopT()[3],
-                sp1.getTopT()[4],
-                sp1.getTopT()[5]]) @ (sp1.nominal_plate_transform)
-            ab = sp1.nominal_plate_transform.spawnNew([
-                sp1.getTopJoints()[0,(i+1)%6],
-                sp1.getTopJoints()[1,(i+1)%6],
-                sp1.getTopJoints()[2,(i+1)%6],
-                sp1.getTopT()[3],
-                sp1.getTopT()[4],
-                sp1.getTopT()[5]]) @ (sp1.nominal_plate_transform)
-            ba = sp2.nominal_plate_transform.spawnNew([
-                sp2.getBottomJoints()[0, i],
-                sp2.getBottomJoints()[1, i],
-                sp2.getBottomJoints()[2, i],
-                sp2.getBottomT()[3],
-                sp2.getBottomT()[4],
-                sp2.getBottomT()[5]]) @ (-1 * sp2.nominal_plate_transform)
-            bb = sp2.nominal_plate_transform.spawnNew([
-                sp2.getBottomJoints()[0,(i+1)%6],
-                sp2.getBottomJoints()[1,(i+1)%6],
-                sp2.getBottomJoints()[2,(i+1)%6],
-                sp2.getBottomT()[3],
-                sp2.getBottomT()[4],
-                sp2.getBottomT()[5]]) @ (-1 * sp2.nominal_plate_transform)
-            #ax.plot3D([aa[0], ab[0]],[aa[1], ab[1]],[aa[2], ab[2]], 'g')
-            #ax.plot3D([ba[0], bb[0]],[ba[1], bb[1]],[ba[2], bb[2]], 'g')
-            ax.plot3D(
-                [sp2.getBottomJoints()[0, i], aa[0]],
-                [sp2.getBottomJoints()[1, i], aa[1]],
-                [sp2.getBottomJoints()[2, i], aa[2]], 'g')
-            ax.plot3D(
-                [sp1.getTopJoints()[0, i], ba[0]],
-                [sp1.getTopJoints()[1, i], ba[1]],
-                [sp1.getTopJoints()[2, i], ba[2]], 'g')
+    for i in range(6):
+        aa = sp1.nominal_plate_transform.spawnNew([
+            sp1.getTopJoints()[0, i],
+            sp1.getTopJoints()[1, i],
+            sp1.getTopJoints()[2, i],
+            sp1.getTopT()[3],
+            sp1.getTopT()[4],
+            sp1.getTopT()[5]]) @ (sp1.nominal_plate_transform)
+        ab = sp1.nominal_plate_transform.spawnNew([
+            sp1.getTopJoints()[0,(i+1)%6],
+            sp1.getTopJoints()[1,(i+1)%6],
+            sp1.getTopJoints()[2,(i+1)%6],
+            sp1.getTopT()[3],
+            sp1.getTopT()[4],
+            sp1.getTopT()[5]]) @ (sp1.nominal_plate_transform)
+        ba = sp2.nominal_plate_transform.spawnNew([
+            sp2.getBottomJoints()[0, i],
+            sp2.getBottomJoints()[1, i],
+            sp2.getBottomJoints()[2, i],
+            sp2.getBottomT()[3],
+            sp2.getBottomT()[4],
+            sp2.getBottomT()[5]]) @ (-1 * sp2.nominal_plate_transform)
+        bb = sp2.nominal_plate_transform.spawnNew([
+            sp2.getBottomJoints()[0,(i+1)%6],
+            sp2.getBottomJoints()[1,(i+1)%6],
+            sp2.getBottomJoints()[2,(i+1)%6],
+            sp2.getBottomT()[3],
+            sp2.getBottomT()[4],
+            sp2.getBottomT()[5]]) @ (-1 * sp2.nominal_plate_transform)
+        #ax.plot3D([aa[0], ab[0]],[aa[1], ab[1]],[aa[2], ab[2]], 'g')
+        #ax.plot3D([ba[0], bb[0]],[ba[1], bb[1]],[ba[2], bb[2]], 'g')
+        ax.plot3D(
+            [sp2.getBottomJoints()[0, i], aa[0]],
+            [sp2.getBottomJoints()[1, i], aa[1]],
+            [sp2.getBottomJoints()[2, i], aa[2]], 'g')
+        ax.plot3D(
+            [sp1.getTopJoints()[0, i], ba[0]],
+            [sp1.getTopJoints()[1, i], ba[1]],
+            [sp1.getTopJoints()[2, i], ba[2]], 'g')
 
 def DrawAssembler(spl, ax, col = 'green', forces = 1):
     """Short summary.
