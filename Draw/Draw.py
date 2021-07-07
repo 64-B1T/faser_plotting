@@ -1,7 +1,7 @@
 import math
 import matplotlib.pyplot
 
-from faser_math import FASER as fsr
+from faser_math import fsr
 #import Arm as Arm
 import numpy as np
 import scipy.linalg as ling
@@ -73,6 +73,7 @@ def alpha_shape_3D(pos, alpha):
 
     Vertices = np.unique(Edges)
     return Vertices,Edges,Triangles
+    
 def DrawManipulability(J, tm, lenfactor):
     p = tm[0:3,3]
     R = tm[0:3,2]
@@ -208,8 +209,8 @@ def DrawArm(arm, ax, jrad = .1, jdia = .3, lens = 1, c = 'grey', forces = np.zer
         DrawAxes(zed, lens, ax)
 
         try:
-            #Tp = fsr.TMMidPoint(poses[i], poses[i+1])
-            #T = fsr.TMMidRotAdjust(Tp ,poses[i], poses[i+1], mode = 1)
+            #Tp = fsr.tmInterpMidpoint(poses[i], poses[i+1])
+            #T = fsr.adjustRotationToMidpoint(Tp ,poses[i], poses[i+1], mode = 1)
             #disp(T)
 
             #DrawRectangle(T, Dims[i+1,0:3], ax, c = c)
@@ -319,7 +320,7 @@ def DrawCamera(cam, size, ax):
     ax.plot3D(np.hstack((Scr[0:4,0], Scr[0,0])), np.hstack((Scr[0:4,1], Scr[0,1])), np.hstack((Scr[0:4,2], Scr[0,2])), 'red')
 
 def DrawAxes(zed, lv, ax, makelegend = None, zdir = None):
-    zx, zy, zz = zed.TripleUnit(lv)
+    zx, zy, zz = zed.tripleUnit(lv)
     poses = zed.gTAA().flatten()
     if makelegend is not None:
         if zdir is not None:
@@ -337,32 +338,43 @@ def DrawTrussElement(T, L, R, ax, c='blue', c2 = 'blue', hf = False, delt = .5, 
         R1 = R1 @ T.spawnNew([0, 0, -L/2, 0, 0, 0])
         R2 = R2 @ T.spawnNew([0, 0, -L/2, 0, 0, 0])
         R3 = R3 @ T.spawnNew([0, 0, -L/2, 0, 0, 0])
-        #DrawTube(fsr.TMMidRotAdjust(fsr.TMMidPoint(R1, R2), R1, R2, mode=1), fsr.Distance(R1, R2)-RB, RB/3, ax, 'b', res = 4)
-        #DrawTube(fsr.TMMidRotAdjust(fsr.TMMidPoint(R2, R3), R2, R3, mode=1), fsr.Distance(R2, R3)-RB, RB/3, ax, 'b', res = 4)
-        #DrawTube(fsr.TMMidRotAdjust(fsr.TMMidPoint(R3, R1), R3, R1, mode=1), fsr.Distance(R3, R1)-RB, RB/3, ax, 'b', res = 4)
-        cycle = 1
         for i in range(int(L/delt)):
             R1A = R1 @ T.spawnNew([0, 0, delt, 0, 0, 0])
             R2A = R2 @ T.spawnNew([0, 0, delt, 0, 0, 0])
             R3A = R3 @ T.spawnNew([0, 0, delt, 0, 0, 0])
             if cycle ==1:
-                DrawTube(fsr.TMMidRotAdjust(fsr.TMMidPoint(R1, R2A), R1, R2A, mode=1), fsr.Distance(R1, R2A)-RB, RB/3, ax, c2, res = 3)
-                DrawTube(fsr.TMMidRotAdjust(fsr.TMMidPoint(R2, R3A), R2, R3A, mode=1), fsr.Distance(R2, R3A)-RB, RB/3, ax, c2, res = 3)
-                DrawTube(fsr.TMMidRotAdjust(fsr.TMMidPoint(R3, R1A), R3, R1A, mode=1), fsr.Distance(R3, R1A)-RB, RB/3, ax, c2, res = 3)
+                DrawTube(fsr.adjustRotationToMidpoint(
+                    fsr.tmInterpMidpoint(R1, R2A), R1, R2A, mode=1),
+                    fsr.distance(R1, R2A)-RB, RB/3, ax, c2, res = 3)
+                DrawTube(fsr.adjustRotationToMidpoint(
+                    fsr.tmInterpMidpoint(R2, R3A), R2, R3A, mode=1),
+                    fsr.distance(R2, R3A)-RB, RB/3, ax, c2, res = 3)
+                DrawTube(fsr.adjustRotationToMidpoint(
+                    fsr.tmInterpMidpoint(R3, R1A), R3, R1A, mode=1),
+                    fsr.distance(R3, R1A)-RB, RB/3, ax, c2, res = 3)
                 R1 = R1A
                 R2 = R2A
                 R3 = R3A
             else:
-                DrawTube(fsr.TMMidRotAdjust(fsr.TMMidPoint(R1, R3A), R1, R3A, mode=1), fsr.Distance(R1, R3A)-RB, RB/3, ax, c2, res = 3)
-                DrawTube(fsr.TMMidRotAdjust(fsr.TMMidPoint(R2, R1A), R2, R1A, mode=1), fsr.Distance(R2, R1A)-RB, RB/3, ax, c2, res = 3)
-                DrawTube(fsr.TMMidRotAdjust(fsr.TMMidPoint(R3, R2A), R3, R2A, mode=1), fsr.Distance(R3, R2A)-RB, RB/3, ax, c2, res = 3)
+                DrawTube(fsr.adjustRotationToMidpoint(
+                    fsr.tmInterpMidpoint(R1, R3A), R1, R3A, mode=1),
+                    fsr.distance(R1, R3A)-RB, RB/3, ax, c2, res = 3)
+                DrawTube(fsr.adjustRotationToMidpoint(
+                    fsr.tmInterpMidpoint(R2, R1A), R2, R1A, mode=1),
+                    fsr.distance(R2, R1A)-RB, RB/3, ax, c2, res = 3)
+                DrawTube(fsr.adjustRotationToMidpoint(
+                    fsr.tmInterpMidpoint(R3, R2A), R3, R2A, mode=1),
+                    fsr.distance(R3, R2A)-RB, RB/3, ax, c2, res = 3)
                 R1 = R1A
                 R2 = R2A
                 R3 = R3A
             cycle*=-1
-        DrawTube(fsr.TMMidRotAdjust(fsr.TMMidPoint(R1, R2), R1, R2, mode=1), fsr.Distance(R1, R2)-RB, RB/3, ax, 'r', res = 3)
-        DrawTube(fsr.TMMidRotAdjust(fsr.TMMidPoint(R2, R3), R2, R3, mode=1), fsr.Distance(R2, R3)-RB, RB/3, ax, 'r', res = 3)
-        DrawTube(fsr.TMMidRotAdjust(fsr.TMMidPoint(R3, R1), R3, R1, mode=1), fsr.Distance(R3, R1)-RB, RB/3, ax, 'r', res = 3)
+        DrawTube(fsr.adjustRotationToMidpoint(fsr.tmInterpMidpoint(R1, R2), R1, R2, mode=1),
+            fsr.distance(R1, R2)-RB, RB/3, ax, 'r', res = 3)
+        DrawTube(fsr.adjustRotationToMidpoint(fsr.tmInterpMidpoint(R2, R3), R2, R3, mode=1),
+            fsr.distance(R2, R3)-RB, RB/3, ax, 'r', res = 3)
+        DrawTube(fsr.adjustRotationToMidpoint(fsr.tmInterpMidpoint(R3, R1), R3, R1, mode=1),
+            fsr.distance(R3, R1)-RB, RB/3, ax, 'r', res = 3)
     R1 = T @ T.spawnNew([R, 0, 0, 0, 0, 0])
     R2 = T @ T.spawnNew([0, 0, 0, 0, 0, 2*np.pi/3]) @ T.spawnNew([R, 0, 0, 0, 0, 0])
     R3 = T @ T.spawnNew([0, 0, 0, 0, 0, 4*np.pi/3]) @ T.spawnNew([R, 0, 0, 0, 0, 0])
