@@ -73,7 +73,7 @@ def alpha_shape_3D(pos, alpha):
 
     Vertices = np.unique(Edges)
     return Vertices,Edges,Triangles
-    
+
 def DrawManipulability(J, tm, lenfactor):
     p = tm[0:3,3]
     R = tm[0:3,2]
@@ -187,7 +187,7 @@ def QuadPlot(p1, p2, dim, ax, c = 'b'):
 def DrawArm(arm, ax, jrad = .1, jdia = .3, lens = 1, c = 'grey', forces = np.zeros((1))):
     startind = 0
 
-    while (sum(arm.S[3:6,startind]) == 1):
+    while (sum(arm.screw_list[3:6,startind]) == 1):
         startind = startind + 1
     poses = arm.getJointTransforms()
     p = np.zeros((3,len(poses[startind:])))
@@ -544,6 +544,10 @@ def DrawObstructions(listObs, ax, col = 'red', a = .1):
         center = obs[1].spawnNew([(obs[1][0] + obs[0][0])/2, (obs[1][1] + obs[0][1])/2, (obs[1][2] + obs[0][2])/2, 0, 0, 0])
         dims = [(obs[1][0] - obs[0][0]), (obs[1][1] - obs[0][1]), (obs[1][2] - obs[0][2])]
         DrawRectangle(center, dims, ax, col, a)
+
+def drawMesh(mesh, ax):
+    ax.plot_trisurf(mesh.vertices[:, 0], mesh.vertices[:, 1],
+            triangles=mesh.faces, Z=mesh.vertices[:, 2])
 
 def DrawWrench(tr, weight, dir, ax):
     trb = tr.spawnNew([tr[0], tr[1], tr[2], 0, 0, 0])
