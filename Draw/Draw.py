@@ -1,33 +1,33 @@
-import math
-import matplotlib.pyplot
+#Utility Functions
+import copy
+from collections import defaultdict
+import glob
+import os
+import random
+from stl import mesh
 
-from faser_math import fsr
-#import Arm as Arm
+#Math Functions
+import alphashape
+from descartes import PolygonPatch
+import math
 import numpy as np
 import scipy.linalg as ling
-import glob
-#from faserlib.tm import tm
+from scipy.spatial import Delaunay
+from scipy.special import jn
 
-from faser_utils.disp.disp import *
-from stl import mesh
-import copy
+#Drawing Functios
+import matplotlib.pyplot
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection
-# Get lighting object for shading surface plots.
 from matplotlib.colors import LightSource
-from collections import defaultdict
-from scipy.spatial import Delaunay
-from descartes import PolygonPatch
-import alphashape
-# Get colormaps to use with lighting object.
 from matplotlib import cm
-from scipy.special import jn
 
-import random
+#Other Modules
+from faser_math import fsr
+from faser_utils.disp.disp import disp, progressBar
 
-import os
 # Create an instance of a LightSource and use it to illuminate the surface.
 
 def alpha_shape_3D(pos, alpha):
