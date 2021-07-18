@@ -1,26 +1,34 @@
+#Utility Functions
+import copy
+from collections import defaultdict
+import glob
+import os
+import random
+from stl import mesh
+
+#Math Functions
+import alphashape
+from descartes import PolygonPatch
 import math
-from faser_math import FASER as fsr
 import numpy as np
 import scipy.linalg as ling
-import glob
-from faser_utils.disp.disp import disp, progressBar
-from stl import mesh
-import copy
+from scipy.spatial import Delaunay
+from scipy.special import jn
+
+#Drawing Functios
+import matplotlib.pyplot
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection
-# Get lighting object for shading surface plots.
 from matplotlib.colors import LightSource
-from collections import defaultdict
-from scipy.spatial import Delaunay
-from descartes import PolygonPatch
-import alphashape
-# Get colormaps to use with lighting object.
 from matplotlib import cm
-import random
 
-import os
+#Other Modules
+from faser_math import fsr
+from faser_utils.disp.disp import disp, progressBar
+
+
 # Create an instance of a LightSource and use it to illuminate the surface.
 
 def alpha_shape_3D(pos, alpha):
@@ -81,7 +89,6 @@ def DrawManipulability(J, tm, lenfactor, ax):
     """
     p = tm[0:3, 3]
     R = tm[0:3, 2]
-
     Aw = J[0:3,:] @ J[0:3,:].conj().transpose()
     Av = J[3:6,:] @ J[3:6,:].conj().transpose()
 
@@ -250,7 +257,6 @@ def DrawArm(arm, ax, jrad = .1, jdia = .3, lens = 1, c = 'grey', forces = np.zer
 
     """
     startind = 0
-
     while (sum(arm.screw_list[3:6, startind]) == 1):
         startind = startind + 1
     poses = arm.getJointTransforms()
@@ -273,8 +279,8 @@ def DrawArm(arm, ax, jrad = .1, jdia = .3, lens = 1, c = 'grey', forces = np.zer
         DrawAxes(zed, lens, ax)
 
         try:
-            #Tp = fsr.TMMidPoint(poses[i], poses[i+1])
-            #T = fsr.TMMidRotAdjust(Tp , poses[i], poses[i+1], mode = 1)
+            #Tp = fsr.tmInterpMidpoint(poses[i], poses[i+1])
+            #T = fsr.adjustRotationToMidpoint(Tp ,poses[i], poses[i+1], mode = 1)
             #disp(T)
 
             #DrawRectangle(T, Dims[i+1, 0:3], ax, c = c)
@@ -539,7 +545,7 @@ def DrawAxes(zed, lv, ax, makelegend = None, zdir = None):
         type: Description of returned object.
 
     """
-    zx, zy, zz = zed.TripleUnit(lv)
+    zx, zy, zz = zed.tripleUnit(lv)
     poses = zed.gTAA().flatten()
     if makelegend is not None:
         if zdir is not None:
@@ -574,32 +580,43 @@ def DrawTrussElement(T, L, R, ax, c='blue', c2 = 'blue', hf = False, delt = .5, 
         R1 = R1 @ T.spawnNew([0, 0, -L/2, 0, 0, 0])
         R2 = R2 @ T.spawnNew([0, 0, -L/2, 0, 0, 0])
         R3 = R3 @ T.spawnNew([0, 0, -L/2, 0, 0, 0])
-        #DrawTube(fsr.TMMidRotAdjust(fsr.TMMidPoint(R1, R2), R1, R2, mode=1), fsr.Distance(R1, R2)-RB, RB/3, ax, 'b', res = 4)
-        #DrawTube(fsr.TMMidRotAdjust(fsr.TMMidPoint(R2, R3), R2, R3, mode=1), fsr.Distance(R2, R3)-RB, RB/3, ax, 'b', res = 4)
-        #DrawTube(fsr.TMMidRotAdjust(fsr.TMMidPoint(R3, R1), R3, R1, mode=1), fsr.Distance(R3, R1)-RB, RB/3, ax, 'b', res = 4)
-        cycle = 1
         for i in range(int(L/delt)):
             R1A = R1 @ T.spawnNew([0, 0, delt, 0, 0, 0])
             R2A = R2 @ T.spawnNew([0, 0, delt, 0, 0, 0])
             R3A = R3 @ T.spawnNew([0, 0, delt, 0, 0, 0])
             if cycle ==1:
-                DrawTube(fsr.TMMidRotAdjust(fsr.TMMidPoint(R1, R2A), R1, R2A, mode=1), fsr.Distance(R1, R2A)-RB, RB/3, ax, c2, res = 3)
-                DrawTube(fsr.TMMidRotAdjust(fsr.TMMidPoint(R2, R3A), R2, R3A, mode=1), fsr.Distance(R2, R3A)-RB, RB/3, ax, c2, res = 3)
-                DrawTube(fsr.TMMidRotAdjust(fsr.TMMidPoint(R3, R1A), R3, R1A, mode=1), fsr.Distance(R3, R1A)-RB, RB/3, ax, c2, res = 3)
+                DrawTube(fsr.adjustRotationToMidpoint(
+                    fsr.tmInterpMidpoint(R1, R2A), R1, R2A, mode=1),
+                    fsr.distance(R1, R2A)-RB, RB/3, ax, c2, res = 3)
+                DrawTube(fsr.adjustRotationToMidpoint(
+                    fsr.tmInterpMidpoint(R2, R3A), R2, R3A, mode=1),
+                    fsr.distance(R2, R3A)-RB, RB/3, ax, c2, res = 3)
+                DrawTube(fsr.adjustRotationToMidpoint(
+                    fsr.tmInterpMidpoint(R3, R1A), R3, R1A, mode=1),
+                    fsr.distance(R3, R1A)-RB, RB/3, ax, c2, res = 3)
                 R1 = R1A
                 R2 = R2A
                 R3 = R3A
             else:
-                DrawTube(fsr.TMMidRotAdjust(fsr.TMMidPoint(R1, R3A), R1, R3A, mode=1), fsr.Distance(R1, R3A)-RB, RB/3, ax, c2, res = 3)
-                DrawTube(fsr.TMMidRotAdjust(fsr.TMMidPoint(R2, R1A), R2, R1A, mode=1), fsr.Distance(R2, R1A)-RB, RB/3, ax, c2, res = 3)
-                DrawTube(fsr.TMMidRotAdjust(fsr.TMMidPoint(R3, R2A), R3, R2A, mode=1), fsr.Distance(R3, R2A)-RB, RB/3, ax, c2, res = 3)
+                DrawTube(fsr.adjustRotationToMidpoint(
+                    fsr.tmInterpMidpoint(R1, R3A), R1, R3A, mode=1),
+                    fsr.distance(R1, R3A)-RB, RB/3, ax, c2, res = 3)
+                DrawTube(fsr.adjustRotationToMidpoint(
+                    fsr.tmInterpMidpoint(R2, R1A), R2, R1A, mode=1),
+                    fsr.distance(R2, R1A)-RB, RB/3, ax, c2, res = 3)
+                DrawTube(fsr.adjustRotationToMidpoint(
+                    fsr.tmInterpMidpoint(R3, R2A), R3, R2A, mode=1),
+                    fsr.distance(R3, R2A)-RB, RB/3, ax, c2, res = 3)
                 R1 = R1A
                 R2 = R2A
                 R3 = R3A
             cycle*=-1
-        DrawTube(fsr.TMMidRotAdjust(fsr.TMMidPoint(R1, R2), R1, R2, mode=1), fsr.Distance(R1, R2)-RB, RB/3, ax, 'r', res = 3)
-        DrawTube(fsr.TMMidRotAdjust(fsr.TMMidPoint(R2, R3), R2, R3, mode=1), fsr.Distance(R2, R3)-RB, RB/3, ax, 'r', res = 3)
-        DrawTube(fsr.TMMidRotAdjust(fsr.TMMidPoint(R3, R1), R3, R1, mode=1), fsr.Distance(R3, R1)-RB, RB/3, ax, 'r', res = 3)
+        DrawTube(fsr.adjustRotationToMidpoint(fsr.tmInterpMidpoint(R1, R2), R1, R2, mode=1),
+            fsr.distance(R1, R2)-RB, RB/3, ax, 'r', res = 3)
+        DrawTube(fsr.adjustRotationToMidpoint(fsr.tmInterpMidpoint(R2, R3), R2, R3, mode=1),
+            fsr.distance(R2, R3)-RB, RB/3, ax, 'r', res = 3)
+        DrawTube(fsr.adjustRotationToMidpoint(fsr.tmInterpMidpoint(R3, R1), R3, R1, mode=1),
+            fsr.distance(R3, R1)-RB, RB/3, ax, 'r', res = 3)
     R1 = T @ T.spawnNew([R, 0, 0, 0, 0, 0])
     R2 = T @ T.spawnNew([0, 0, 0, 0, 0, 2*np.pi/3]) @ T.spawnNew([R, 0, 0, 0, 0, 0])
     R3 = T @ T.spawnNew([0, 0, 0, 0, 0, 4*np.pi/3]) @ T.spawnNew([R, 0, 0, 0, 0, 0])
@@ -909,6 +926,10 @@ def DrawObstructions(listObs, ax, col = 'red', a = .1):
         center = obs[1].spawnNew([(obs[1][0] + obs[0][0])/2, (obs[1][1] + obs[0][1])/2, (obs[1][2] + obs[0][2])/2, 0, 0, 0])
         dims = [(obs[1][0] - obs[0][0]), (obs[1][1] - obs[0][1]), (obs[1][2] - obs[0][2])]
         DrawRectangle(center, dims, ax, col, a)
+
+def drawMesh(mesh, ax):
+    ax.plot_trisurf(mesh.vertices[:, 0], mesh.vertices[:, 1],
+            triangles=mesh.faces, Z=mesh.vertices[:, 2])
 
 def DrawWrench(tr, weight, dir, ax):
     """Short summary.
